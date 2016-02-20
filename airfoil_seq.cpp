@@ -154,19 +154,22 @@ int main(int argc, char **argv)
   // main time-marching loop
 
   niter = 1000;
-
+  double save = 0, area = 0, update = 0, flux_res = 0, perem = 0;  
   for(int iter=1; iter<=niter; iter++) {
-
+	double wall_t_b = omp_get_wtime();
     // save old flow solution
+	#pragma omp parallel for shared(ncell,q,qold)
     for (int i = 0; i < ncell; i++) {
       for (int n=0; n<4; n++) qold[4*i+n] = q[4*i+n];
     }
-    
+    double wall_t_a = omp_get_wtime();    
+    save += wall_t_a - wall_t_b;
     // predictor/corrector update loop
 
     for(int k=0; k<2; k++) {
-
+      wall_t_b = omp_get_wtime();
       // calculate area/timstep
+	  #pragma omp parallel for default(shared)
       for (int i = 0; i < ncell; i++) {
         double dx,dy, ri,u,v,c;
 
@@ -194,9 +197,11 @@ int main(int argc, char **argv)
         adt[i] = adt[i] / cfl;
 
       }
+      wall_t_a = omp_get_wtime();
+      area += (wall_t_a - wall_t_b);
 
       // calculate flux residual
-
+      wall_t_b = omp_get_wtime();
       for (int i = 0; i < nedge; i++) {
         double dx,dy,mu, ri, p1,vol1, p2,vol2, f;
 
@@ -227,8 +232,10 @@ int main(int argc, char **argv)
         res[ecell[2*i+1]*4+3] -= f;
       }
 
+      wall_t_a = omp_get_wtime();
+      flux_res += (wall_t_a - wall_t_b);
       // Apply boundary conditions
-
+      wall_t_b = omp_get_wtime();
       for (int i = 0; i < nbedge; i++) {
         double dx,dy,mu, ri, p1,vol1, p2,vol2, f;
 
@@ -261,10 +268,13 @@ int main(int argc, char **argv)
           res[becell[i]*4+3] += f;
         }
       }
+      wall_t_a = omp_get_wtime();
+      perem += (wall_t_a - wall_t_b);
 
       // update flow field
-
+      wall_t_b = omp_get_wtime();
       rms = 0.0;
+	  #pragma omp parallel for reduction(+:rms)
       for (int i = 0; i < ncell; i++) {
         double del, adti;
 
@@ -277,12 +287,20 @@ int main(int argc, char **argv)
           rms  += del*del;
         }
       }
+      wall_t_a = omp_get_wtime();
+      update += (wall_t_a - wall_t_b);
     }
 
     // print iteration history
     rms = sqrt(rms/(double) ncell);
-    if (iter%100 == 0)
-      printf(" %d  %10.5e \n",iter,rms);
+    if (iter%100 == 0){
+    	printf(" %d  %10.5e \n",iter,rms);
+    	printf("\tsave: %f\n",save);
+    	printf("\tarea: %f\n",area);
+    	printf("\tflux_res: %f\n",flux_res);
+    	printf("\tperem: %f\n",perem);
+    	printf("\tupdate: %f\n",update);
+    }
   }
 
   wall_t2 = omp_get_wtime();
