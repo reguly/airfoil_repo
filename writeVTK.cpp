@@ -1,5 +1,5 @@
 #include <stdio.h>
-
+#define N_STATEVAR 4
 /*
  * Utility function for binary output: swaps byte endianneses
  */
@@ -116,18 +116,18 @@ void WriteMeshToVTKBinary(const char* filename, float* nodeCoords_data, int nnod
   //float* values_data;
   //values_data = (float*) values->data;
     sprintf(s, "CELL_DATA %d\n"
-                  "SCALARS Eta float 1\n"
+                  "SCALARS q0 float 1\n"
                   "LOOKUP_TABLE default\n",
                   ncell); fwrite(s, sizeof(char), strlen(s), fp);
 
   for ( i=0; i<ncell; ++i ) {
-    tmp_float = swapEndiannesFloat(values_data[i*N_STATEVAR] + values_data[i*N_STATEVAR+3]);
+    tmp_float = swapEndiannesFloat(values_data[i*N_STATEVAR]);
     fwrite(&tmp_float, sizeof(float), 1, fp);
   }
 
     strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
 
-    strcpy(s, "SCALARS U float 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
+    strcpy(s, "SCALARS q1 float 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
   for ( i=0; i<ncell; ++i ){
     tmp_float = swapEndiannesFloat(values_data[i*N_STATEVAR+1]);
     fwrite(&tmp_float, sizeof(float), 1, fp);
@@ -135,7 +135,7 @@ void WriteMeshToVTKBinary(const char* filename, float* nodeCoords_data, int nnod
   strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
 
 
-  strcpy(s, "SCALARS V float 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
+  strcpy(s, "SCALARS q2 float 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
   for ( i=0; i<ncell; ++i ) {
     tmp_float = swapEndiannesFloat(values_data[i*N_STATEVAR+2]);
     fwrite(&tmp_float, sizeof(float), 1, fp);
@@ -143,26 +143,12 @@ void WriteMeshToVTKBinary(const char* filename, float* nodeCoords_data, int nnod
 
   strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
 
-  strcpy(s, "SCALARS Bathymetry float 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
+  strcpy(s, "SCALARS q3 float 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
   for ( i=0; i<ncell; ++i ) {
     tmp_float = swapEndiannesFloat(values_data[i*N_STATEVAR+3]);
     fwrite(&tmp_float, sizeof(float), 1, fp);
   }
 
-  strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
-
-  strcpy(s, "SCALARS Visual float 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
-  float hundred = 100.0;
-  for ( i=0; i<ncell; ++i ) {
-    if(values_data[i*N_STATEVAR] < 1e-3){
-      tmp_float = swapEndiannesFloat(hundred);
-      fwrite(&tmp_float, sizeof(float), 1, fp);
-    }
-    else {
-      tmp_float = swapEndiannesFloat(values_data[i*N_STATEVAR] + values_data[i*N_STATEVAR+3]);
-      fwrite(&tmp_float, sizeof(float), 1, fp);
-    }
-  }
   strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
 
   if(fclose(fp) != 0) {
@@ -216,41 +202,30 @@ void WriteMeshToVTKAscii(const char* filename, float* nodeCoords_data, int nnode
 //  float* values_data;
 //  values_data = (float*) values->data;
   fprintf(fp, "CELL_DATA %d\n"
-              "SCALARS Eta float 1\n"
+              "SCALARS q0 float 1\n"
               "LOOKUP_TABLE default\n",
               ncell);
   float tmp = 0.0;
   for ( i=0; i<ncell; ++i ) {
-    tmp = values_data[i*N_STATEVAR] + values_data[i*N_STATEVAR+3];
-    fprintf(fp, "%10.20g\n", values_data[i*N_STATEVAR] + values_data[i*N_STATEVAR+3]);
+    tmp = values_data[i*N_STATEVAR];
+    fprintf(fp, "%10.20g\n", values_data[i*N_STATEVAR]);
   }
 
   fprintf(fp, "\n");
-  fprintf(fp, "SCALARS U float 1\n"
+  fprintf(fp, "SCALARS q1 float 1\n"
               "LOOKUP_TABLE default\n");
   for ( i=0; i<ncell; ++i )
     fprintf(fp, "%10.20g\n", values_data[i*N_STATEVAR+1]);
   fprintf(fp, "\n");
-  fprintf(fp, "SCALARS V float 1\n"
+  fprintf(fp, "SCALARS q2 float 1\n"
               "LOOKUP_TABLE default\n");
   for ( i=0; i<ncell; ++i )
     fprintf(fp, "%10.20g\n", values_data[i*N_STATEVAR+2]);
   fprintf(fp, "\n");
-  fprintf(fp, "SCALARS Bathymetry float 1\n"
+  fprintf(fp, "SCALARS q3 float 1\n"
               "LOOKUP_TABLE default\n");
   for ( i=0; i<ncell; ++i )
     fprintf(fp, "%10.20g\n", values_data[i*N_STATEVAR+3]);
-  fprintf(fp, "\n");
-
-  fprintf(fp, "SCALARS Visual float 1\n"
-              "LOOKUP_TABLE default\n");
-
-  for ( i=0; i<ncell; ++i ) {
-    if(values_data[i*N_STATEVAR] < 1e-3)
-      fprintf(fp, "%10.20g\n", 100.0);
-    else
-      fprintf(fp, "%10.20g\n", values_data[i*N_STATEVAR] + values_data[i*N_STATEVAR+3]);
-  }
   fprintf(fp, "\n");
 
   if(fclose(fp) != 0) {
