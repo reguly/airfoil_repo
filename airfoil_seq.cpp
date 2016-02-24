@@ -47,7 +47,7 @@
 #include <math.h>
 #include <omp.h>
 #include <vector>
-
+#include "writeVTK.h"
 typedef double real;
 // global constants
 
@@ -384,6 +384,9 @@ int main(int argc, char **argv)
     	printf("\tflux_res: %f\n",flux_res);
     	printf("\tperem: %f\n",perem);
     	printf("\tupdate: %f\n",update);
+      char buf[50];
+      sprintf(buf,"out%d.vtk",iter);
+      WriteMeshToVTKAscii(buf, x, nnode, cell, ncell, q);
     }
     }
   }

@@ -1,9 +1,13 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #define N_STATEVAR 4
+#define MESH_DIM 2
+#define N_NODESPERCELL 4
 /*
  * Utility function for binary output: swaps byte endianneses
  */
-inline float swapEndiannesDouble(double d) {
+inline double swapEndiannesDouble(double d) {
   union {
     double d;
     char b[8];
@@ -55,12 +59,12 @@ inline int swapEndiannesInt(int d) {
 /*
  * Write simulation output to binary file
  */
-void WriteMeshToVTKBinary(const char* filename, float* nodeCoords_data, int nnode, int* cellsToNodes_data, int ncell, float *values_data) {
-  op_printf("Writing OutputSimulation to binary file: %s \n",filename);
+void WriteMeshToVTKBinary(const char* filename, double* nodeCoords_data, int nnode, int* cellsToNodes_data, int ncell, double *values_data) {
+  printf("Writing OutputSimulation to binary file: %s \n",filename);
   FILE* fp;
   fp = fopen(filename, "w");
   if(fp == NULL) {
-    op_printf("can't open file for write %s\n",filename);
+    printf("can't open file for write %s\n",filename);
     exit(-1);
   }
 
@@ -70,24 +74,24 @@ void WriteMeshToVTKBinary(const char* filename, float* nodeCoords_data, int nnod
   strcpy(s, "BINARY \nDATASET UNSTRUCTURED_GRID\n\n"); fwrite(s, sizeof(char), strlen(s), fp);
 
   // write vertices
-  sprintf(s,"POINTS %d float\n", nnode); fwrite(s, sizeof(char), strlen(s), fp);
+  sprintf(s,"POINTS %d double\n", nnode); fwrite(s, sizeof(char), strlen(s), fp);
 
-  //float* nodeCoords_data;
-  //nodeCoords_data = (float*)nodeCoords->data;
-  float tmp_float;
+  //double* nodeCoords_data;
+  //nodeCoords_data = (double*)nodeCoords->data;
+  double tmp_double;
   int i = 0;
   for (i = 0; i < nnode; ++i) {
-    tmp_float = swapEndiannesFloat(nodeCoords_data[i*MESH_DIM  ]);
-    fwrite(&tmp_float, sizeof(float), 1, fp);
-    tmp_float = swapEndiannesFloat(nodeCoords_data[i*MESH_DIM+1]);
-    fwrite(&tmp_float, sizeof(float), 1, fp);
-    tmp_float = swapEndiannesFloat(0.0);
-    fwrite(&tmp_float, sizeof(float), 1, fp);
+    tmp_double = swapEndiannesDouble(nodeCoords_data[i*MESH_DIM  ]);
+    fwrite(&tmp_double, sizeof(double), 1, fp);
+    tmp_double = swapEndiannesDouble(nodeCoords_data[i*MESH_DIM+1]);
+    fwrite(&tmp_double, sizeof(double), 1, fp);
+    tmp_double = swapEndiannesDouble(0.0);
+    fwrite(&tmp_double, sizeof(double), 1, fp);
   }
   strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
 
   // write cells
-  sprintf(s, "CELLS %d %d\n", ncell, 4*ncell); fwrite(s, sizeof(char), strlen(s), fp);
+  sprintf(s, "CELLS %d %d\n", ncell, 5*ncell); fwrite(s, sizeof(char), strlen(s), fp);
 
   int three = 3;
   int tmp_int;
@@ -100,59 +104,61 @@ void WriteMeshToVTKBinary(const char* filename, float* nodeCoords_data, int nnod
     fwrite(&tmp_int, sizeof(int), 1, fp);
     tmp_int = swapEndiannesInt(cellsToNodes_data[i*N_NODESPERCELL+2]);
     fwrite(&tmp_int, sizeof(int), 1, fp);
+    tmp_int = swapEndiannesInt(cellsToNodes_data[i*N_NODESPERCELL+3]);
+    fwrite(&tmp_int, sizeof(int), 1, fp);
   }
   strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
 
   // write cell types (5 for triangles)
   sprintf(s, "CELL_TYPES %d\n", ncell); fwrite(s, sizeof(char), strlen(s), fp);
 
-  int five=5;
+  int five=9; //five triangles 9 quads
   for ( i=0; i<ncell; ++i ) {
     tmp_int = swapEndiannesInt(five);
     fwrite(&tmp_int, sizeof(int), 1, fp);
   }
 
   strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
-  //float* values_data;
-  //values_data = (float*) values->data;
+  //double* values_data;
+  //values_data = (double*) values->data;
     sprintf(s, "CELL_DATA %d\n"
-                  "SCALARS q0 float 1\n"
+                  "SCALARS q0 double 1\n"
                   "LOOKUP_TABLE default\n",
                   ncell); fwrite(s, sizeof(char), strlen(s), fp);
 
   for ( i=0; i<ncell; ++i ) {
-    tmp_float = swapEndiannesFloat(values_data[i*N_STATEVAR]);
-    fwrite(&tmp_float, sizeof(float), 1, fp);
+    tmp_double = swapEndiannesDouble(values_data[i*N_STATEVAR]);
+    fwrite(&tmp_double, sizeof(double), 1, fp);
   }
 
     strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
 
-    strcpy(s, "SCALARS q1 float 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
+    strcpy(s, "SCALARS q1 double 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
   for ( i=0; i<ncell; ++i ){
-    tmp_float = swapEndiannesFloat(values_data[i*N_STATEVAR+1]);
-    fwrite(&tmp_float, sizeof(float), 1, fp);
+    tmp_double = swapEndiannesDouble(values_data[i*N_STATEVAR+1]);
+    fwrite(&tmp_double, sizeof(double), 1, fp);
   }
   strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
 
 
-  strcpy(s, "SCALARS q2 float 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
+  strcpy(s, "SCALARS q2 double 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
   for ( i=0; i<ncell; ++i ) {
-    tmp_float = swapEndiannesFloat(values_data[i*N_STATEVAR+2]);
-    fwrite(&tmp_float, sizeof(float), 1, fp);
+    tmp_double = swapEndiannesDouble(values_data[i*N_STATEVAR+2]);
+    fwrite(&tmp_double, sizeof(double), 1, fp);
   }
 
   strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
 
-  strcpy(s, "SCALARS q3 float 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
+  strcpy(s, "SCALARS q3 double 1\nLOOKUP_TABLE default\n"); fwrite(s, sizeof(char), strlen(s), fp);
   for ( i=0; i<ncell; ++i ) {
-    tmp_float = swapEndiannesFloat(values_data[i*N_STATEVAR+3]);
-    fwrite(&tmp_float, sizeof(float), 1, fp);
+    tmp_double = swapEndiannesDouble(values_data[i*N_STATEVAR+3]);
+    fwrite(&tmp_double, sizeof(double), 1, fp);
   }
 
   strcpy(s, "\n"); fwrite(s, sizeof(char), strlen(s), fp);
 
   if(fclose(fp) != 0) {
-    op_printf("can't close file %s\n",filename);
+    printf("can't close file %s\n",filename);
     exit(-1);
   }
 }
@@ -161,12 +167,12 @@ void WriteMeshToVTKBinary(const char* filename, float* nodeCoords_data, int nnod
  * Write simulation output to ASCII file
  */
 //void WriteMeshToVTKAscii(const char* filename, op_dat nodeCoords, int nnode, op_map cellsToNodes, int ncell, op_dat values) {
-void WriteMeshToVTKAscii(const char* filename, float* nodeCoords_data, int nnode, int* cellsToNodes_data, int ncell, float *values_data) {
-  op_printf("Writing OutputSimulation to ASCII file: %s \n",filename);
+void WriteMeshToVTKAscii(const char* filename, double* nodeCoords_data, int nnode, int* cellsToNodes_data, int ncell, double *values_data) {
+  printf("Writing OutputSimulation to ASCII file: %s \n",filename);
   FILE* fp;
   fp = fopen(filename, "w");
   if(fp == NULL) {
-    op_printf("can't open file for write %s\n",filename);
+    printf("can't open file for write %s\n",filename);
     exit(-1);
   }
 
@@ -174,62 +180,64 @@ void WriteMeshToVTKAscii(const char* filename, float* nodeCoords_data, int nnode
   fprintf(fp,"# vtk DataFile Version 2.0\n Output from OP2 Volna.\n");
   fprintf(fp,"ASCII \nDATASET UNSTRUCTURED_GRID\n\n");
   // write vertices
-  fprintf(fp,"POINTS %d float\n", nnode);
-//  float* nodeCoords_data;
-//  nodeCoords_data = (float*)nodeCoords->data;
+  fprintf(fp,"POINTS %d double\n", nnode);
+//  double* nodeCoords_data;
+//  nodeCoords_data = (double*)nodeCoords->data;
   int i = 0;
   for (i = 0; i < nnode; ++i) {
     fprintf(fp, "%g %g %g \n",
-        (float)nodeCoords_data[i*MESH_DIM  ],
-        (float)nodeCoords_data[i*MESH_DIM+1],
+        (double)nodeCoords_data[i*MESH_DIM  ],
+        (double)nodeCoords_data[i*MESH_DIM+1],
         0.0);
   }
   fprintf(fp, "\n");
-  fprintf(fp, "CELLS %d %d\n", ncell, 4*ncell);
+  fprintf(fp, "CELLS %d %d\n", ncell, 5*ncell);
   for ( i = 0; i < ncell; ++i ) {
-    fprintf(fp, "3 %d %d %d\n",
-        cellsToNodes->map[i*N_NODESPERCELL  ],
-        cellsToNodes->map[i*N_NODESPERCELL+1],
-        cellsToNodes->map[i*N_NODESPERCELL+2]);
+    fprintf(fp, "4 %d %d %d %d\n",
+        cellsToNodes_data[i*N_NODESPERCELL  ],
+        cellsToNodes_data[i*N_NODESPERCELL+1],
+        cellsToNodes_data[i*N_NODESPERCELL+2],
+        cellsToNodes_data[i*N_NODESPERCELL+3]);
   }
   fprintf(fp, "\n");
-  // write cell types (5 for triangles)
+  // write cell types (5 for triangles, 9 for quads)
   fprintf(fp, "CELL_TYPES %d\n", ncell);
   for ( i=0; i<ncell; ++i )
-    fprintf(fp, "5\n");
+    fprintf(fp, "9\n");
   fprintf(fp, "\n");
 
-//  float* values_data;
-//  values_data = (float*) values->data;
+//  double* values_data;
+//  values_data = (double*) values->data;
+
   fprintf(fp, "CELL_DATA %d\n"
-              "SCALARS q0 float 1\n"
+              "SCALARS q0 double 1\n"
               "LOOKUP_TABLE default\n",
               ncell);
-  float tmp = 0.0;
+  double tmp = 0.0;
   for ( i=0; i<ncell; ++i ) {
     tmp = values_data[i*N_STATEVAR];
     fprintf(fp, "%10.20g\n", values_data[i*N_STATEVAR]);
   }
 
   fprintf(fp, "\n");
-  fprintf(fp, "SCALARS q1 float 1\n"
+  fprintf(fp, "SCALARS q1 double 1\n"
               "LOOKUP_TABLE default\n");
   for ( i=0; i<ncell; ++i )
     fprintf(fp, "%10.20g\n", values_data[i*N_STATEVAR+1]);
   fprintf(fp, "\n");
-  fprintf(fp, "SCALARS q2 float 1\n"
+  fprintf(fp, "SCALARS q2 double 1\n"
               "LOOKUP_TABLE default\n");
   for ( i=0; i<ncell; ++i )
     fprintf(fp, "%10.20g\n", values_data[i*N_STATEVAR+2]);
   fprintf(fp, "\n");
-  fprintf(fp, "SCALARS q3 float 1\n"
+  fprintf(fp, "SCALARS q3 double 1\n"
               "LOOKUP_TABLE default\n");
   for ( i=0; i<ncell; ++i )
     fprintf(fp, "%10.20g\n", values_data[i*N_STATEVAR+3]);
   fprintf(fp, "\n");
 
   if(fclose(fp) != 0) {
-    op_printf("can't close file %s\n",filename);
+    printf("can't close file %s\n",filename);
     exit(-1);
   }
 }
